@@ -17,18 +17,14 @@ CREATE DATABASE tournament;
 
 -- create database tables
 
-CREATE TABLE Players ( name TEXT,
-                       id SERIAL PRIMARY KEY);
+CREATE TABLE Players ( name TEXT NOT NULL,
+                       id SERIAL PRIMARY KEY,
+                       total_wins INTEGER DEFAULT 0,
+                       total_matches INTEGER DEFAULT 0);
 
+-- created as required by code review
 
-CREATE TABLE Matches (id SERIAL REFERENCES Players (id),
-                      totalWins INTEGER,
-                      totalMatches INTEGER);
-
--- create a commonly used view
-
-CREATE VIEW PlayerStandings AS
-    SELECT a.id, a.name, b.totalWins, b.totalMatches
-    FROM Players as a, Matches as b
-    WHERE a.id = b.id ORDER BY totalWins DESC;
+CREATE TABLE Matches ( match_id SERIAL PRIMARY KEY,
+                       winner_id INTEGER REFERENCES Players(id) ON DELETE CASCADE,
+                       loser_id INTEGER REFERENCES Players(id) ON DELETE CASCADE);
 
