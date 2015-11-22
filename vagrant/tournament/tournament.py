@@ -4,6 +4,7 @@
 #
 
 import psycopg2
+import bleach
 
 
 def connect():
@@ -13,14 +14,30 @@ def connect():
 
 def deleteMatches():
     """Remove all the match records from the database."""
+    conn = connect()
+    c = conn.cursor()
+    c.execute("DELETE FROM Matches")
+    conn.commit()
+    conn.close()
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
-
+    conn = connect()
+    c = conn.cursor()
+    deleteMatches()
+    c.execute("DELETE FROM Players")
+    conn.commit()
+    conn.close()
 
 def countPlayers():
     """Returns the number of players currently registered."""
+    conn = connect()
+    c = conn.cursor()
+    c.execute("SELECT count(name) AS totalNum FROM Players")
+    numOfPlayers = c.fetchone()[0]
+    conn.close()
+    return numOfPlayers
 
 
 def registerPlayer(name):
@@ -32,7 +49,17 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
-
+    
+    conn = connect()
+    c = conn.cursor()
+    cleanedName = bleach.clean(name)
+    
+    c.execute("INSERT INTO Players (name) VALUES (%s) RETURNING id", (cleanedName,))
+    id = c.fetchone()[0]
+    c.execute("INSERT INTO Matches (id, totalWins, totalMatches) VALUES (%s, %s, %s)", (id, 0, 0))
+  
+    conn.commit()
+    conn.close()
 
 def playerStandings():
     """Returns a list of the players and their win records, sorted by wins.
@@ -47,7 +74,14 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
+    conn = connect()
+    c = conn.cursor()
+    c.execute("SELECT * FROM PlayerStandings")
 
+    listOfPlayerStanding = c.fetchall()
+
+    conn.close()
+    return listOfPlayerStanding
 
 def reportMatch(winner, loser):
     """Records the outcome of a single match between two players.
@@ -56,6 +90,14 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
+    conn = connect()
+    c = conn.cursor()
+    c.execute("UPDATE Matches SET (totalWins, totalMatches) = (totalWins+1, totalMatches+1) WHERE id = (%s)", (winner,))
+    c.execute("UPDATE Matches SET (totalMatches) = (totalMatches+1) WHERE id = (%s)", (loser,))
+
+    conn.commit()
+    conn.close()
+
  
  
 def swissPairings():
@@ -73,5 +115,13 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
+    curPlayerStandings = playerStandings()
+    swissPairs = []
+    for cur in range(0, len(curPlayerStandings)-1,2):
+        swissPairs.append((curPlayerStandings[cur][0], curPlayerStandings[cur][1], 
+                          curPlayerStandings[cur+1][0], curPlayerStandings[cur+1][1]))
+
+    return swissPairs
+
 
 
